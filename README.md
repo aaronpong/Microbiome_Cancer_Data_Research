@@ -209,7 +209,14 @@ This project uses simulated/processed microbiome data. For access to original da
 
 ## Citation
 
-If using this methodology or code, please cite this work appropriately according to academic standards for computational biology and biostatistics research.
+Aitchison, J. (1982). The statistical analysis of compositional data. Journal of the Royal Statistical Society: Series B, 44(2), 139-177.
+Bullman, S., Pedamallu, C.S., Sicinska, E., et al. (2017). Analysis of Fusobacterium persistence and antibiotic response in colorectal cancer. Science, 358(6369), 1443-1448.
+Hosmer, D.W. and Lemeshow, S. (2000). Applied Logistic Regression (2nd ed.). John Wiley & Sons.
+Knights, D., Costello, E.K., & Knight, R. (2011). Supervised classification of human microbiota. FEMS Microbiology Reviews, 35(2), 343-359.
+Kostic, A.D., Gevers, D., Pedamallu, C.S., et al. (2012). Genomic analysis identifies association of Fusobacterium with colorectal carcinoma. Genome Research, 22(2), 292-298.
+Lin, W., Shi, P., Feng, R., & Li, H. (2014). Variable selection in regression with compositional covariates. Biometrika, 101(4), 785-797.
+Tibshirani, R. (1996). Regression shrinkage and selection via the lasso. Journal of the Royal Statistical Society: Series B, 58(1), 267-288.
+Vangay, P., Hillmann, B.M., & Knights, D. (2019). Microbiome Learning Repo (ML Repo): A public repository of microbiome regression and classification tasks. GigaScience, 8(5), giz042.
 
 ---
 
