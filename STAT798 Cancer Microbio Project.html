@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.5.57">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>cancerdata</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="STAT798 Cancer Microbio Project_files/libs/clipboard/clipboard.min.js"></script>
+<script src="STAT798 Cancer Microbio Project_files/libs/quarto-html/quarto.js"></script>
+<script src="STAT798 Cancer Microbio Project_files/libs/quarto-html/popper.min.js"></script>
+<script src="STAT798 Cancer Microbio Project_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="STAT798 Cancer Microbio Project_files/libs/quarto-html/anchor.min.js"></script>
+<link href="STAT798 Cancer Microbio Project_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="STAT798 Cancer Microbio Project_files/libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="STAT798 Cancer Microbio Project_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="STAT798 Cancer Microbio Project_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="STAT798 Cancer Microbio Project_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body class="fullcontent">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">cancerdata</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="data-setup-and-cleaning" class="level2">
+<h2 class="anchored" data-anchor-id="data-setup-and-cleaning">Data Setup and Cleaning</h2>
+<p>Load Packages</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(compositions)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Welcome to compositions, a package for compositional data analysis.
+Find an intro with "? compositions"</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>
+Attaching package: 'compositions'</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>The following objects are masked from 'package:stats':
+
+    anova, cor, cov, dist, var</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>The following object is masked from 'package:graphics':
+
+    segments</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>The following objects are masked from 'package:base':
+
+    %*%, norm, scale, scale.default</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(glmnet)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Loading required package: Matrix</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Loaded glmnet 4.1-8</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>
+Attaching package: 'glmnet'</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>The following object is masked from 'package:compositions':
+
+    rmult</code></pre>
+</div>
+</div>
+<p>Load and clean Data</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co">#task mapping file</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>task <span class="ot">&lt;-</span> <span class="fu">read.delim</span>(<span class="st">"data/task.txt"</span>, <span class="at">header=</span><span class="cn">TRUE</span>)</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(task) <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"SampleID"</span>,<span class="st">"y"</span>,<span class="st">"SubjectID"</span>)</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a><span class="co">#OTU file (actual data)</span></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>otu <span class="ot">&lt;-</span> <span class="fu">read.delim</span>(<span class="st">"data/otutable.txt"</span>, </span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>                     <span class="at">header =</span> <span class="cn">TRUE</span>, <span class="at">check.names =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>OTU <span class="ot">=</span> otu[,<span class="dv">1</span>]</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>count_data <span class="ot">=</span> <span class="fu">t</span>(otu[,<span class="sc">-</span><span class="dv">1</span>])</span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(count_data) <span class="ot">=</span> OTU</span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a><span class="co">#all of the sample IDs should come up in the dataset</span></span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>match_ids <span class="ot">=</span> <span class="fu">sapply</span>(task<span class="sc">$</span>SampleID, <span class="cf">function</span>(x) x <span class="sc">%in%</span> <span class="fu">rownames</span>(count_data))</span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a>match_ids</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>R8J9ZNOW.518040  C0275.T.518032 5TA9VAT9.518088 OTGGZN5Y.518063 QFHRSNIH.518116 
+           TRUE            TRUE            TRUE            TRUE            TRUE 
+5TA9VN6K.518161  C0240.N.518020 OTGGZAZO.518108  C0241.T.518067 UEL2GAPI.518173 
+           TRUE            TRUE            TRUE            TRUE            TRUE 
+ C0374.N.518099 KIXFRNL2.518129  C0366.N.518094  C0344.N.518103  C0258.T.517997 
+           TRUE            TRUE            TRUE            TRUE            TRUE 
+    C4.S.518169  C0270.T.518163 UZ65XN27.518028  C0395.N.518054  C0394.N.518031 
+           TRUE            TRUE            TRUE            TRUE            TRUE 
+R8J9ZAGC.518059 59S9WNC6.518055  C0398.N.518152    C10.S.517995  C0355.T.518157 
+           TRUE            TRUE            TRUE            TRUE            TRUE 
+ C0271.N.518022  C0311.T.518131 GQ6LSNI6.518106  C0325.T.518083  C0371.T.518139 
+           TRUE            TRUE            TRUE            TRUE            TRUE 
+TV28INUO.518004 LRQ9WN6C.518048  C0388.N.518136  C0225.N.518047  C0285.T.518044 
+           TRUE            TRUE            TRUE            TRUE            TRUE 
+ C0399.N.518011  C0322.N.518165 5EKFOAO4.518164 6G2KBASQ.517999  C0315.N.518021 
+           TRUE            TRUE            TRUE            TRUE            TRUE 
+ C0206.N.518065  C0285.N.518084  C0268.N.518089 UEL2GN92.518058 UZ65XAS5.518119 
+           TRUE            TRUE            TRUE            TRUE            TRUE 
+ C0335.N.518107  C0230.T.518144  C0258.N.518014  C0395.T.518075  C0374.T.518127 
+           TRUE            TRUE            TRUE            TRUE            TRUE 
+ C0366.T.518172  C0371.N.518009  C0341.N.518101  C0399.T.518153     C4.T.518118 
+           TRUE            TRUE            TRUE            TRUE            TRUE 
+ C0294.N.517987  C0154.N.518002 6G2KBNS6.518045  C0378.N.518158  C0230.N.517992 
+           TRUE            TRUE            TRUE            TRUE            TRUE 
+ C0306.T.518122  C0349.T.518111  C0349.N.517989 KIXFRARY.518160 JIDZEAPD.518149 
+           TRUE            TRUE            TRUE            TRUE            TRUE 
+59S9WAIH.518013  C0241.N.518043 82S3MAZ4.518145  C0252.N.518016 XZ33PA3O.518135 
+           TRUE            TRUE            TRUE            TRUE            TRUE 
+ C0186.N.518143 82S3MNBY.518050  C0318.T.518140 5EKFONB3.518125  C0355.N.518077 
+           TRUE            TRUE            TRUE            TRUE            TRUE 
+ C0332.T.518017 MQETMNL4.518037 LRQ9WAHA.518036  C0362.N.518069  C0362.T.518026 
+           TRUE            TRUE            TRUE            TRUE            TRUE 
+ C0294.T.518134  C0133.N.518051  C0388.T.518015  C0198.N.518081 JIDZEN4J.518073 
+           TRUE            TRUE            TRUE            TRUE            TRUE 
+HZIMMNL5.518062  C0149.N.518039  C0308.N.518154  C0159.N.518042  C0318.N.518105 
+           TRUE            TRUE            TRUE            TRUE            TRUE 
+HZIMMAM6.518095  C0095.T.518141 GQ6LSABJ.518010  C0341.T.518113  C0211.T.518096 
+           TRUE            TRUE            TRUE            TRUE            TRUE 
+ C0095.N.518123  C0149.T.518132  C0344.T.518029 G3UBQNDP.518121  C0212.T.518155 
+           TRUE            TRUE            TRUE            TRUE            TRUE 
+ C0198.T.518166  C0325.N.518109 MQETMAZC.518171  C0342.N.518068  C0225.T.518033 
+           TRUE            TRUE            TRUE            TRUE            TRUE 
+A8A34AP9.518086  C0330.T.518035 TV28IANZ.518070 32I9UNA9.518098 G3UBQAJU.518060 
+           TRUE            TRUE            TRUE            TRUE            TRUE 
+ C0212.N.518167  C0306.N.518003  C0378.T.518104 38U4VNBW.518090 38U4VAHB.518100 
+           TRUE            TRUE            TRUE            TRUE            TRUE 
+QFHRSAG2.518005  C0330.N.518148  C0240.T.518052 YOTV6NC8.518156  C0268.T.518114 
+           TRUE            TRUE            TRUE            TRUE            TRUE 
+ C0209.T.518128     C6.S.518082  C0133.T.518133 O436FAO8.518097 32I9UAPQ.518112 
+           TRUE            TRUE            TRUE            TRUE            TRUE 
+MQE9OAS7.518008 XZ33PN7O.518030 UTWNWANU.518168 XBS5MA8H.517990 A8A34NCW.518023 
+           TRUE            TRUE            TRUE            TRUE            TRUE 
+41E1KAMA.517991  C0252.T.518006  C0342.T.518093  C0112.T.518024 YOTV6ASH.518142 
+           TRUE            TRUE            TRUE            TRUE            TRUE 
+   C10.T.518056  C0394.T.518064  C0333.T.518046 BFJMKAKB.518159  C0159.T.518087 
+           TRUE            TRUE            TRUE            TRUE            TRUE 
+ C0271.T.518078  C0334.N.518066 MQE9ONGV.518038  C0333.N.518126  C0186.T.518019 
+           TRUE            TRUE            TRUE            TRUE            TRUE 
+ C0334.T.518147     C1.T.518120 41E1KNBP.517985  C0322.T.518018  C0332.N.518027 
+           TRUE            TRUE            TRUE            TRUE            TRUE 
+    C6.T.518061  C0311.N.518124  C0211.N.518117  C0256.N.518170  C0270.N.518041 
+           TRUE            TRUE            TRUE            TRUE            TRUE 
+ C0154.T.518091  C0308.T.518162  C0206.T.518053  C0209.N.517984  C0256.T.518080 
+           TRUE            TRUE            TRUE            TRUE            TRUE 
+ C0275.N.518076     C1.S.518137 UTWNWN3P.518012  C0235.T.518049  C0335.T.518115 
+           TRUE            TRUE            TRUE            TRUE            TRUE 
+ C0235.N.517993  C0112.N.518001  C0315.T.518034 O436FNP3.518007 BFJMKNMP.518102 
+           TRUE            TRUE            TRUE            TRUE            TRUE 
+XBS5MNEH.518074  C0398.T.518092 
+           TRUE            TRUE </code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>SampleID <span class="ot">=</span> <span class="fu">rownames</span>(count_data)</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Create true_y vector</span></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>true_y <span class="ot">=</span> <span class="fu">rep</span>(<span class="cn">NA</span>,<span class="fu">nrow</span>(count_data))</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>subject_id <span class="ot">=</span> <span class="fu">rep</span>(<span class="cn">NA</span>,<span class="fu">nrow</span>(count_data))</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span>(i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">nrow</span>(count_data)){</span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span>(SampleID[i] <span class="sc">%in%</span> task<span class="sc">$</span>SampleID){</span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>    true_y[i] <span class="ot">=</span> task<span class="sc">$</span>y[task<span class="sc">$</span>SampleID <span class="sc">==</span> SampleID[i]]</span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>    subject_id[i] <span class="ot">=</span> task<span class="sc">$</span>SubjectID[task<span class="sc">$</span>SampleID <span class="sc">==</span> SampleID[i]]</span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a>y <span class="ot">=</span> true_y</span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a>count_data_all <span class="ot">=</span> <span class="fu">as.data.frame</span>(<span class="fu">cbind</span>(SampleID, y, subject_id, count_data))</span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a>count_data_clean <span class="ot">=</span> count_data_all[<span class="fu">complete.cases</span>(count_data_all),]</span>
+<span id="cb14-15"><a href="#cb14-15" aria-hidden="true" tabindex="-1"></a><span class="fu">View</span>(count_data_clean)</span>
+<span id="cb14-16"><a href="#cb14-16" aria-hidden="true" tabindex="-1"></a><span class="fu">write.csv</span>(count_data_clean,<span class="st">"data/count_data_clean.csv"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>Approach 1: count data + lasso</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>cv_count1 <span class="ot">=</span> <span class="fu">cv.glmnet</span>(<span class="at">x =</span> count_data[<span class="fu">complete.cases</span>(count_data_all),], <span class="at">y =</span> count_data_clean<span class="sc">$</span>y, <span class="at">family =</span> <span class="st">"binomial"</span>)</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>count.glm.out <span class="ot">=</span> <span class="fu">glmnet</span>(<span class="at">x =</span> count_data[<span class="fu">complete.cases</span>(count_data_all),], <span class="at">y =</span> count_data_clean<span class="sc">$</span>y, <span class="at">family =</span> <span class="st">"binomial"</span>,</span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>                       <span class="at">lambda =</span> cv_count1<span class="sc">$</span>lambda.min)</span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a><span class="fu">which</span>(count.glm.out<span class="sc">$</span>beta <span class="sc">!=</span> <span class="dv">0</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code> [1]   14   24   28   41   58   77  138  174  195  201  212  235  265  273  336
+[16]  337  566  577  640  686  711  743  755  764  799  878 1009 1019 1027 1135
+[31] 1180 1287 1291 1323 1325 1418 1427 1657 1677 1801 1813 1915 1916 1960 2032
+[46] 2046 2085 2096 2101 2109 2167 2189 2201 2221 2257 2275 2328 2333 2339 2348
+[61] 2357 2417 2431 2445 2534 2547 2560 2758 2767 2860 2873 2921 2924 2941 2969
+[76] 3022 3080 3086 3088 3140 3163 3176 3183 3194 3206</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(count_data[,<span class="fu">which</span>(count.glm.out<span class="sc">$</span>beta <span class="sc">!=</span> <span class="dv">0</span>)])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code> [1] "1000872" "1024520" "1021368" "1034960" "1059977" "1067865" "1139897"
+ [8] "141146"  "1517779" "149749"  "152485"  "158458"  "179585"  "1649772"
+[15] "174818"  "174831"  "183157"  "183708"  "185420"  "186881"  "187780" 
+[22] "188851"  "189083"  "1895780" "190610"  "193722"  "1974538" "197992" 
+[29] "197970"  "2103552" "2170526" "248900"  "2529960" "259772"  "262533" 
+[36] "289474"  "290399"  "314853"  "317502"  "331411"  "3325758" "350277" 
+[43] "345763"  "349263"  "354334"  "363358"  "362765"  "364048"  "365181" 
+[50] "366143"  "386273"  "4020502" "4093636" "42091"   "4303852" "4310024"
+[57] "4333154" "4332878" "4336943" "4338624" "4341633" "4380863" "4389125"
+[64] "4396426" "4443390" "4448731" "4453501" "549030"  "553150"  "584951" 
+[71] "589277"  "647215"  "696563"  "68458"   "720489"  "792868"  "842559" 
+[78] "845900"  "846710"  "893157"  "921131"  "92840"   "936565"  "949863" 
+[85] "967275" </code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>count.glm.out<span class="sc">$</span>beta[<span class="fu">which</span>(count.glm.out<span class="sc">$</span>beta <span class="sc">!=</span> <span class="dv">0</span>)]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code> [1]  3.297340e-02 -6.379232e-02 -5.540837e-01 -4.212018e-01 -6.324114e-03
+ [6] -7.777545e-01 -1.123842e-01 -6.208887e-01  2.009603e-01 -5.576902e-03
+[11]  1.180685e-01 -9.744327e-02  3.621260e-01  3.125541e-03 -8.874560e-02
+[16] -3.389239e-01 -8.713062e-02 -1.164396e+00 -4.467425e-02 -4.217419e-03
+[21] -8.363859e-02  4.774442e-02 -8.218563e-01 -3.979294e-02  4.285964e-01
+[26] -2.743297e-01 -6.524952e-04 -1.219015e-01 -4.402057e-01 -5.943068e-03
+[31]  1.062881e-01 -4.882730e-01 -2.920947e-02 -1.397608e+00  9.363040e-02
+[36] -6.764059e-01 -2.956947e-04 -2.261059e-02 -3.905638e-01  2.074525e-01
+[41] -6.064294e-02 -1.906426e-03 -5.849567e-02 -8.363908e-02 -7.465111e-01
+[46] -5.823309e-03 -7.089238e-02 -1.371283e-01 -5.829789e-03 -1.195003e-02
+[51]  2.214458e-03  1.869523e-01  2.508929e-01  2.683279e-03 -1.444537e-01
+[56]  5.912488e-01  3.334239e-01 -7.551752e-02 -3.721088e-02 -3.362398e-03
+[61]  2.774467e-02 -1.113859e+00  1.624892e-02  1.475835e-01  2.247381e-01
+[66]  2.906587e-03 -8.479942e-02 -1.792330e+00 -7.516940e-01 -2.095026e-02
+[71] -7.435242e-05 -7.423384e-02 -5.779262e-03  3.230913e-01 -8.350288e-04
+[76] -1.764495e+00 -1.966790e-02 -3.151682e-04 -1.058815e-03 -1.544840e-03
+[81] -5.050121e-02 -1.361978e-04 -8.464876e-01  1.501778e-01 -7.037851e-03</code></pre>
+</div>
+</div>
+<p>Approach 2: ALR transformation</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>comp_data <span class="ot">=</span> count_data</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span>(i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">nrow</span>(count_data)){</span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>  comp_data[i,] <span class="ot">=</span> count_data[i,]<span class="sc">/</span><span class="fu">sum</span>(count_data[i,])</span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a><span class="fu">rowSums</span>(comp_data)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>R8J9ZNOW.518040  C0275.T.518032 5TA9VAT9.518088 OTGGZN5Y.518063 QFHRSNIH.518116 
+              1               1               1               1               1 
+5TA9VN6K.518161  C0195.N.518110  C0240.N.518020 OTGGZAZO.518108  C0241.T.518067 
+              1               1               1               1               1 
+UEL2GAPI.518173  C0374.N.518099 KIXFRNL2.518129  C0366.N.518094  C0344.N.518103 
+              1               1               1               1               1 
+ C0258.T.517997     C4.S.518169  C0270.T.518163 UZ65XN27.518028  C0395.N.518054 
+              1               1               1               1               1 
+ C0394.N.518031 R8J9ZAGC.518059 59S9WNC6.518055  C0398.N.518152    C10.S.517995 
+              1               1               1               1               1 
+ C0355.T.518157  C0271.N.518022  C0311.T.518131 GQ6LSNI6.518106  C0325.T.518083 
+              1               1               1               1               1 
+ C0371.T.518139 TV28INUO.518004 LRQ9WN6C.518048  C0388.N.518136  C0225.N.518047 
+              1               1               1               1               1 
+ C0285.T.518044  C0399.N.518011  C0322.N.518165 5EKFOAO4.518164 6G2KBASQ.517999 
+              1               1               1               1               1 
+ C0315.N.518021  C0206.N.518065  C0285.N.518084  C0268.N.518089  C0134.N.518072 
+              1               1               1               1               1 
+UEL2GN92.518058 UZ65XAS5.518119  C0335.N.518107 G2OD5N55.518146  C0269.N.518130 
+              1               1               1               1               1 
+ C0230.T.518144  C0258.N.518014  C0395.T.518075  C0374.T.518127  C0366.T.518172 
+              1               1               1               1               1 
+ C0371.N.518009  C0341.N.518101  C0399.T.518153     C4.T.518118  C0294.N.517987 
+              1               1               1               1               1 
+ C0154.N.518002 6G2KBNS6.518045  C0195.T.517986  C0378.N.518158  C0230.N.517992 
+              1               1               1               1               1 
+ C0306.T.518122  C0349.T.518111  C0349.N.517989 KIXFRARY.518160 JIDZEAPD.518149 
+              1               1               1               1               1 
+ C0282.N.518138 59S9WAIH.518013  C0241.N.518043 82S3MAZ4.518145  C0134.T.517988 
+              1               1               1               1               1 
+ C0252.N.518016 XZ33PA3O.518135  C0186.N.518143 82S3MNBY.518050  C0318.T.518140 
+              1               1               1               1               1 
+ C0245.T.518151 5EKFONB3.518125  C0355.N.518077  C0332.T.518017 MQETMNL4.518037 
+              1               1               1               1               1 
+LRQ9WAHA.518036  C0362.N.518069  C0362.T.518026  C0294.T.518134  C0133.N.518051 
+              1               1               1               1               1 
+ C0388.T.518015  C0198.N.518081 JIDZEN4J.518073 HZIMMNL5.518062  C0149.N.518039 
+              1               1               1               1               1 
+ C0308.N.518154  C0159.N.518042  C0318.N.518105 HZIMMAM6.518095  C0095.T.518141 
+              1               1               1               1               1 
+GQ6LSABJ.518010  C0341.T.518113  C0211.T.518096  C0095.N.518123  C0149.T.518132 
+              1               1               1               1               1 
+ C0344.T.518029 G2OD5ABL.518057 G3UBQNDP.518121  C0212.T.518155  C0198.T.518166 
+              1               1               1               1               1 
+ C0269.T.518150  C0325.N.518109 MQETMAZC.518171  C0342.N.518068  C0225.T.518033 
+              1               1               1               1               1 
+A8A34AP9.518086  C0330.T.518035 TV28IANZ.518070 32I9UNA9.518098 G3UBQAJU.518060 
+              1               1               1               1               1 
+ C0212.N.518167  C0306.N.518003  C0378.T.518104 38U4VNBW.518090 38U4VAHB.518100 
+              1               1               1               1               1 
+QFHRSAG2.518005  C0330.N.518148  C0240.T.518052 YOTV6NC8.518156  C0268.T.518114 
+              1               1               1               1               1 
+ C0209.T.518128     C6.S.518082  C0133.T.518133 O436FAO8.518097 32I9UAPQ.518112 
+              1               1               1               1               1 
+MQE9OAS7.518008 XZ33PN7O.518030 UTWNWANU.518168 XBS5MA8H.517990 A8A34NCW.518023 
+              1               1               1               1               1 
+41E1KAMA.517991  C0252.T.518006 I7ROLN9P.518079  C0342.T.518093  C0112.T.518024 
+              1               1               1               1               1 
+YOTV6ASH.518142    C10.T.518056  C0394.T.518064  C0333.T.518046  C0282.T.518000 
+              1               1               1               1               1 
+BFJMKAKB.518159  C0159.T.518087  C0271.T.518078  C0334.N.518066 MQE9ONGV.518038 
+              1               1               1               1               1 
+ C0333.N.518126  C0186.T.518019  C0334.T.518147     C1.T.518120 41E1KNBP.517985 
+              1               1               1               1               1 
+ C0322.T.518018  C0332.N.518027     C6.T.518061  C0311.N.518124  C0211.N.518117 
+              1               1               1               1               1 
+ C0256.N.518170  C0270.N.518041  C0154.T.518091  C0308.T.518162  C0206.T.518053 
+              1               1               1               1               1 
+ C0209.N.517984  C0256.T.518080  C0275.N.518076  C0245.N.518071     C1.S.518137 
+              1               1               1               1               1 
+8XBKGABK.517998 UTWNWN3P.518012  C0235.T.518049  C0335.T.518115  C0235.N.517993 
+              1               1               1               1               1 
+ C0314.T.518025  C0112.N.518001 8XBKGN9F.518085  C0315.T.518034 O436FNP3.518007 
+              1               1               1               1               1 
+BFJMKNMP.518102 XBS5MNEH.518074  C0398.T.518092     C3.T.517994     C3.S.517996 
+              1               1               1               1               1 </code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>comp_data_all <span class="ot">=</span> <span class="fu">as.data.frame</span>(<span class="fu">cbind</span>(SampleID,y,subject_id,comp_data))</span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>comp_data_clean <span class="ot">=</span> comp_data_all[<span class="fu">complete.cases</span>(comp_data_all),]</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a><span class="co"># write.csv(comp_data_clean,"comp_data_clean.csv")</span></span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a>alr_comp_data <span class="ot">=</span> <span class="fu">alr</span>(comp_data <span class="sc">+</span> <span class="fl">1e-30</span>)</span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a>alr_comp_data_clean <span class="ot">=</span> alr_comp_data[<span class="fu">complete.cases</span>(comp_data_all),]</span>
+<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">123</span>)</span>
+<span id="cb23-9"><a href="#cb23-9" aria-hidden="true" tabindex="-1"></a>cv_glm1 <span class="ot">=</span> <span class="fu">cv.glmnet</span>(<span class="at">x =</span> alr_comp_data_clean, <span class="at">y =</span> comp_data_clean<span class="sc">$</span>y, <span class="at">family =</span> <span class="st">"binomial"</span>)</span>
+<span id="cb23-10"><a href="#cb23-10" aria-hidden="true" tabindex="-1"></a>glm.out <span class="ot">=</span> <span class="fu">glmnet</span>(<span class="at">x =</span> alr_comp_data_clean, <span class="at">y =</span> comp_data_clean<span class="sc">$</span>y, <span class="at">family =</span> <span class="st">"binomial"</span>, <span class="at">lambda =</span> cv_glm1<span class="sc">$</span>lambda.min)</span>
+<span id="cb23-11"><a href="#cb23-11" aria-hidden="true" tabindex="-1"></a><span class="fu">which</span>(glm.out<span class="sc">$</span>beta <span class="sc">!=</span> <span class="dv">0</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code> [1]   60  138  195  212  265  267  269  273  336  337  339  640  698  744  799
+[16] 1003 1193 1246 1275 1320 1331 1380 1400 1422 1656 1666 1790 1969 2032 2035
+[31] 2047 2091 2096 2101 2102 2201 2202 2275 2328 2358 2429 2534 2560 2620 2643
+[46] 2767 2814 2917 2933 3012 3036 3060 3088 3147</code></pre>
+</div>
+</div>
+<p>Approach 3: Zero-Sum Regression for Compositional Covariates (RobZS and FLORAL)</p>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const onCopySuccess = function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  }
+  const getTextToCopy = function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+    text: getTextToCopy
+  });
+  clipboard.on('success', onCopySuccess);
+  if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+    // For code content inside modals, clipBoardJS needs to be initialized with a container option
+    // TODO: Check when it could be a function (https://github.com/zenorocha/clipboard.js/issues/860)
+    const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+      text: getTextToCopy,
+      container: window.document.getElementById('quarto-embedded-source-code-modal')
+    });
+    clipboardModal.on('success', onCopySuccess);
+  }
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp('/' + window.location.host + '/');
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      // TODO in 1.5, we should make sure this works without a callout special case
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

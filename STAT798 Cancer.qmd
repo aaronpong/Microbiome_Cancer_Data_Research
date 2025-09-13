@@ -1,0 +1,557 @@
+---
+title: "STAT798 Cancer Data Analysis - Master's Project"
+author: "Aaron Pongsugree"
+format: html
+editor: visual
+---
+
+```{r setup, include = FALSE, warning=FALSE}
+#Clear Environment
+rm(list = ls())
+```
+
+## Data Setup and Cleaning
+
+Load Packages
+
+```{r, include = FALSE, warning = FALSE}
+library(compositions)
+library(glmnet)
+library(caret)
+library(pROC)
+library(ggplot2)
+library(dplyr)
+library(reshape2)
+library(gridExtra)
+library(grid)
+```
+
+Load and clean Data
+
+```{r, warning=FALSE}
+# Task mapping file
+task <- read.delim("data/task.txt", header=TRUE)
+colnames(task) = c("SampleID","y","SubjectID")
+
+# OTU file (actual data)
+otu <- read.delim("data/otutable.txt", header = TRUE, check.names = FALSE)
+OTU = otu[,1]
+count_data = t(otu[,-1])
+colnames(count_data) = OTU
+
+# All of the sample IDs should come up in the dataset
+match_ids = sapply(task$SampleID, function(x) x %in% rownames(count_data))
+# Print how many IDs matched
+cat("Number of matched sample IDs:", sum(match_ids), "out of", length(match_ids), "\n")
+
+SampleID = rownames(count_data)
+
+# Create true_y vector and convert Tumor/Healthy to numeric
+true_y = rep(NA, nrow(count_data))
+subject_id = rep(NA, nrow(count_data))
+
+for(i in 1:nrow(count_data)){
+  if(SampleID[i] %in% task$SampleID){
+    # Store as character values initially
+    true_y[i] = as.character(task$y[task$SampleID == SampleID[i]])
+    subject_id[i] = task$SubjectID[task$SampleID == SampleID[i]]
+  }
+}
+
+# Examine class distribution before proceeding
+print("Class distribution in the full dataset:")
+print(table(true_y))
+
+# Create the full dataset
+count_data_all = data.frame(SampleID, y = true_y, subject_id, stringsAsFactors = FALSE)
+# Add count data columns one by one to avoid type conversion issues
+for(col in colnames(count_data)) {
+  count_data_all[[col]] = count_data[, col]
+}
+count_data_clean = count_data_all[complete.cases(count_data_all),]
+
+# Examine class distribution after cleaning
+print("Class distribution after cleaning:")
+print(table(count_data_clean$y))
+
+# Save the cleaned data
+write.csv(count_data_clean, "data/count_data_clean.csv")
+
+paired_counts <- table(count_data_clean$subject_id, count_data_clean$y)
+print("Subjects with both tumor and healthy samples:")
+print(sum(paired_counts[,"Healthy"] > 0 & paired_counts[,"Tumor"] > 0))
+```
+
+## Methods
+
+Approach 1: count data + lasso
+
+```{r, warning=FALSE}
+# Split data into training and testing sets 
+set.seed(123)
+
+# Extract features and response
+X <- as.matrix(count_data_clean[, !(colnames(count_data_clean) %in% c("SampleID", "y", "subject_id"))])
+
+# Make sure y is a proper factor
+y <- factor(count_data_clean$y, levels = c("Healthy", "Tumor"))
+
+print("Full dataset class distribution:")
+print(table(y))
+
+# Stratified sampling by subject and class
+tumor_subjects <- unique(count_data_clean$subject_id[count_data_clean$y == "Tumor"])
+healthy_subjects <- unique(count_data_clean$subject_id[count_data_clean$y == "Healthy"])
+
+# 70% from each class
+train_tumor_subjects <- sample(tumor_subjects, floor(0.7 * length(tumor_subjects)))
+train_healthy_subjects <- sample(healthy_subjects, floor(0.7 * length(healthy_subjects)))
+
+# Combine for training
+train_subjects <- c(train_tumor_subjects, train_healthy_subjects)
+
+train_idx <- which(count_data_clean$subject_id %in% train_subjects)
+test_idx <- setdiff(1:nrow(count_data_clean), train_idx)
+
+# Create training and testing datasets
+X_train <- X[train_idx, ]
+y_train <- y[train_idx]
+X_test <- X[test_idx, ]
+y_test <- y[test_idx]
+
+
+print(table(y_train))
+print(table(y_test))
+
+# If we have imbalanced folds or train/test sets, use a simpler approach (fixes som errors I was having), used Claude.ai help for this section
+if (min(table(y_train)) < 5 || min(table(y_test)) < 5) {
+  cat("Warning: Small class counts detected, using a simpler approach\n")
+  
+  # Use a direct LASSO approach without cross-validation
+  lambda_seq <- exp(seq(-8, 1, length.out = 50))
+  direct_lasso <- glmnet(
+    x = X_train, 
+    y = y_train, 
+    family = "binomial",
+    alpha = 1,
+    lambda = lambda_seq
+  )
+  
+  # Choose lambda that gives ~20 features
+  n_features <- sapply(lambda_seq, function(l) {
+    sum(coef(direct_lasso, s = l)[-1] != 0)  # Count non-zero coefficients, excluding intercept
+  })
+  
+  # Find lambda yielding closest to 20 features
+  target_features <- 20
+  best_lambda_idx <- which.min(abs(n_features - target_features))
+  best_lambda <- lambda_seq[best_lambda_idx]
+  
+  cat("Selected lambda:", best_lambda, "giving", n_features[best_lambda_idx], "features\n")
+  
+  # Extract coefficients
+  coef_matrix <- coef(direct_lasso, s = best_lambda)
+  nonzero_idx <- which(coef_matrix[-1] != 0)  # Excluding intercept
+  nonzero_features <- colnames(X_train)[nonzero_idx]
+  nonzero_coefs <- coef_matrix[nonzero_idx + 1]  # +1 for intercept offset
+  
+  # Make predictions
+  test_probs <- predict(direct_lasso, newx = X_test, type = "response", s = best_lambda)
+  test_preds <- factor(ifelse(test_probs > 0.5, "Tumor", "Healthy"), levels = levels(y_test))
+  
+  # confusion matrix
+  conf_matrix <- confusionMatrix(test_preds, y_test)
+  print(conf_matrix)
+  
+  # ROC and AUC
+  roc_obj <- roc(as.numeric(y_test == "Tumor"), as.vector(test_probs))
+  auc_value <- auc(roc_obj)
+  cat("AUC:", round(auc_value, 4), "\n")
+  
+  feature_importance <- data.frame(
+    Feature = nonzero_features,
+    Coefficient = nonzero_coefs
+  )
+  
+  # absolute coefficient value
+  feature_importance <- feature_importance[order(-abs(feature_importance$Coefficient)), ]
+  
+  # Display top 20 most important features
+  head(feature_importance, 20)
+  
+  # Save results
+  raw_counts_results <- list(
+    model = direct_lasso,
+    lambda_min = best_lambda,
+    selected_features = feature_importance,
+    performance = list(
+      accuracy = conf_matrix$overall["Accuracy"],
+      sensitivity = conf_matrix$byClass["Sensitivity"],
+      specificity = conf_matrix$byClass["Specificity"],
+      balanced_accuracy = conf_matrix$byClass["Balanced Accuracy"],
+      auc = auc_value,
+      confusion_matrix = conf_matrix
+    )
+  )
+  
+} else {
+  # Set up train control with stratified cross-validation
+  train_control <- trainControl(
+    method = "cv",
+    number = 5,
+    classProbs = TRUE,
+    summaryFunction = twoClassSummary,
+    savePredictions = "final",
+    sampling = "up"  # Use upsampling to balance classes
+  )
+  
+  # Set up glmnet tuning grid
+  alpha_grid <- 1  # Use LASSO
+  lambda_grid <- exp(seq(-8, 1, length.out = 50))
+  tuning_grid <- expand.grid(alpha = alpha_grid, lambda = lambda_grid)
+  
+  # Train the model
+  set.seed(123)
+  lasso_model <- train(
+    x = X_train,
+    y = y_train,
+    method = "glmnet",
+    trControl = train_control,
+    tuneGrid = tuning_grid,
+    metric = "ROC",
+    preProcess = c("center", "scale")
+  )
+  
+  print(lasso_model)
+  plot(lasso_model)
+  
+  # best lambda 
+  best_lambda <- lasso_model$bestTune$lambda
+  cat("Best lambda:", best_lambda, "\n")
+  
+  #final model
+  final_model <- lasso_model$finalModel
+  
+  # Extract non-zero coefficients from the best model
+  coef_matrix <- coef(final_model, s = best_lambda)
+  nonzero_idx <- which(coef_matrix[-1, 1] != 0) 
+  nonzero_features <- colnames(X_train)[nonzero_idx]
+  nonzero_coefs <- coef_matrix[nonzero_idx + 1, 1]
+  
+  cat("Number of features selected:", length(nonzero_idx), "out of", ncol(X_train), "\n")
+  
+
+  feature_importance <- data.frame(
+    Feature = nonzero_features,
+    Coefficient = nonzero_coefs
+  )
+  
+  feature_importance <- feature_importance[order(-abs(feature_importance$Coefficient)), ]
+  
+  # Display top 20 most important features
+  head(feature_importance, 20)
+  
+  # Make predictions on the test set
+  test_probs <- predict(lasso_model, newdata = X_test, type = "prob")[, "Tumor"]
+  test_preds <- predict(lasso_model, newdata = X_test, type = "raw")
+  
+  # confusion matrix
+  conf_matrix <- confusionMatrix(test_preds, y_test)
+  print(conf_matrix)
+  
+  #ROC and AUC
+  roc_obj <- roc(as.numeric(y_test == "Tumor"), test_probs)
+  auc_value <- auc(roc_obj)
+  cat("AUC:", round(auc_value, 4), "\n")
+  
+  raw_counts_results <- list(
+    model = lasso_model,
+    lambda_min = best_lambda,
+    selected_features = feature_importance,
+    performance = list(
+      accuracy = conf_matrix$overall["Accuracy"],
+      sensitivity = conf_matrix$byClass["Sensitivity"],
+      specificity = conf_matrix$byClass["Specificity"],
+      balanced_accuracy = conf_matrix$byClass["Balanced Accuracy"],
+      auc = auc_value,
+      confusion_matrix = conf_matrix
+    )
+  )
+}
+
+#ROC curve
+plot(roc_obj, main = "ROC Curve for Raw Counts + LASSO Model", 
+     col = "blue", lwd = 2)
+abline(a = 0, b = 1, lty = 2, col = "gray")
+legend("bottomright", legend = paste("AUC =", round(auc_value, 4)), 
+       col = "blue", lwd = 2)
+```
+
+Approach 2: ALR transformation
+
+```{r, warning=FALSE}
+# First, convert raw counts to compositional data Add a small pseudocount to avoid zeros
+pseudocount <- 0.5
+comp_data <- count_data + pseudocount
+
+# Normalize to get compositional data
+comp_data <- t(apply(comp_data, 1, function(x) x/sum(x)))
+
+# Apply ALR transformation (using the last taxon as reference by default)
+alr_comp_data <- alr(comp_data)
+
+# Create dataframe with ALR transformed data
+alr_data_all <- data.frame(
+  SampleID = SampleID,
+  y = true_y,
+  subject_id = subject_id
+)
+
+# Add ALR transformed data columns
+for (i in 1:ncol(alr_comp_data)) {
+  alr_data_all[[paste0("ALR_", i)]] <- alr_comp_data[, i]
+}
+
+# Clean up missing values
+alr_data_clean <- alr_data_all[complete.cases(alr_data_all),]
+
+# Verify class distribution
+print("ALR data class distribution:")
+print(table(alr_data_clean$y))
+
+# Save the cleaned ALR data
+write.csv(alr_data_clean, "data/alr_data_clean.csv")
+
+# Split into training and testing sets 
+X_alr <- as.matrix(alr_data_clean[, !colnames(alr_data_clean) %in% c("SampleID", "y", "subject_id")])
+y_alr <- factor(alr_data_clean$y, levels = c("Healthy", "Tumor"))
+
+train_idx_alr <- which(alr_data_clean$subject_id %in% train_subjects)
+test_idx_alr <- setdiff(1:nrow(alr_data_clean), train_idx_alr)
+
+X_train_alr <- X_alr[train_idx_alr, ]
+y_train_alr <- y_alr[train_idx_alr]
+X_test_alr <- X_alr[test_idx_alr, ]
+y_test_alr <- y_alr[test_idx_alr]
+
+# Verify training and testing class distribution
+print("ALR training set class distribution:")
+print(table(y_train_alr))
+print("ALR testing set class distribution:")
+print(table(y_test_alr))
+
+# Set up train control with stratified cross-validation
+train_control_alr <- trainControl(
+  method = "cv",
+  number = 5,
+  classProbs = TRUE,
+  summaryFunction = twoClassSummary,
+  savePredictions = "final",
+  sampling = "up"  # Use upsampling to balance classes
+)
+
+# Set up glmnet tuning grid
+alpha_grid_alr <- 1  # Use LASSO
+lambda_grid_alr <- exp(seq(-8, 1, length.out = 50))
+tuning_grid_alr <- expand.grid(alpha = alpha_grid_alr, lambda = lambda_grid_alr)
+
+# Train the model
+set.seed(123)
+alr_lasso_model <- train(
+  x = X_train_alr,
+  y = y_train_alr,
+  method = "glmnet",
+  trControl = train_control_alr,
+  tuneGrid = tuning_grid_alr,
+  metric = "ROC",
+  preProcess = c("center", "scale")
+)
+
+print(alr_lasso_model)
+plot(alr_lasso_model)
+
+# Extract best lambda
+best_lambda_alr <- alr_lasso_model$bestTune$lambda
+cat("Best lambda:", best_lambda_alr, "\n")
+
+final_model_alr <- alr_lasso_model$finalModel
+
+# Extract non-zero coefficients from the best model
+coef_matrix_alr <- coef(final_model_alr, s = best_lambda_alr)
+nonzero_idx_alr <- which(coef_matrix_alr[-1, 1] != 0)  # Excluding intercept
+nonzero_features_alr <- colnames(X_train_alr)[nonzero_idx_alr]
+nonzero_coefs_alr <- coef_matrix_alr[nonzero_idx_alr + 1, 1]  # +1 for intercept offset
+
+# Print number of selected features
+cat("Number of features selected:", length(nonzero_idx_alr), "out of", ncol(X_train_alr), "\n")
+
+
+feature_importance_alr <- data.frame(
+  Feature = nonzero_features_alr,
+  Coefficient = nonzero_coefs_alr
+)
+
+
+feature_importance_alr <- feature_importance_alr[order(-abs(feature_importance_alr$Coefficient)), ]
+
+# Display top 20 most important features
+print("Top 20 most important ALR features:")
+print(head(feature_importance_alr, 20))
+
+
+test_probs_alr <- predict(alr_lasso_model, newdata = X_test_alr, type = "prob")[, "Tumor"]
+test_preds_alr <- predict(alr_lasso_model, newdata = X_test_alr, type = "raw")
+
+# confusion matrix
+conf_matrix_alr <- confusionMatrix(test_preds_alr, y_test_alr)
+print(conf_matrix_alr)
+
+# ROC and AUC
+roc_obj_alr <- roc(as.numeric(y_test_alr == "Tumor"), test_probs_alr)
+auc_value_alr <- auc(roc_obj_alr)
+cat("AUC:", round(auc_value_alr, 4), "\n")
+
+# ROC curve
+plot(roc_obj_alr, main = "ROC Curve for ALR + LASSO Model", 
+     col = "blue", lwd = 2)
+abline(a = 0, b = 1, lty = 2, col = "gray")
+legend("bottomright", legend = paste("AUC =", round(auc_value_alr, 4)), 
+       col = "blue", lwd = 2)
+
+alr_results <- list(
+  model = alr_lasso_model,
+  lambda_min = best_lambda_alr,
+  selected_features = feature_importance_alr,
+  performance = list(
+    accuracy = conf_matrix_alr$overall["Accuracy"],
+    sensitivity = conf_matrix_alr$byClass["Sensitivity"],
+    specificity = conf_matrix_alr$byClass["Specificity"],
+    balanced_accuracy = conf_matrix_alr$byClass["Balanced Accuracy"],
+    auc = auc_value_alr,
+    confusion_matrix = conf_matrix_alr
+  )
+)
+
+# Compare performance of Raw Counts vs ALR
+results_comparison <- data.frame(
+  Method = c("Raw Counts + LASSO", "ALR + LASSO"),
+  Accuracy = c(as.numeric(raw_counts_results$performance$accuracy), 
+               as.numeric(alr_results$performance$accuracy)),
+  Sensitivity = c(as.numeric(raw_counts_results$performance$sensitivity), 
+                  as.numeric(alr_results$performance$sensitivity)),
+  Specificity = c(as.numeric(raw_counts_results$performance$specificity), 
+                  as.numeric(alr_results$performance$specificity)),
+  AUC = c(as.numeric(raw_counts_results$performance$auc), 
+          as.numeric(alr_results$performance$auc)),
+  Features_Selected = c(nrow(raw_counts_results$selected_features), 
+                       nrow(alr_results$selected_features))
+)
+
+print("Performance comparison between methods:")
+print(results_comparison)
+```
+
+Comparison of Classification Methods:
+
+```{r, warning=FALSE}
+# Compare performance metrics
+performance_comparison <- data.frame(
+  Method = c("Raw Counts + LASSO", "ALR Transformation + LASSO"),
+  Accuracy = c(raw_counts_results$performance$accuracy, alr_results$performance$accuracy),
+  Sensitivity = c(raw_counts_results$performance$sensitivity, alr_results$performance$sensitivity),
+  Specificity = c(raw_counts_results$performance$specificity, alr_results$performance$specificity),
+  Balanced_Accuracy = c(raw_counts_results$performance$balanced_accuracy, alr_results$performance$balanced_accuracy),
+  AUC = c(raw_counts_results$performance$auc, alr_results$performance$auc)
+)
+
+print(performance_comparison)
+
+# Visualize performance
+performance_long <- melt(performance_comparison, id.vars = "Method")
+ggplot(performance_long, aes(x = variable, y = value, fill = Method)) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.7) +
+  scale_fill_manual(values = c("steelblue", "firebrick")) +
+  labs(title = "Performance Comparison: Raw Counts vs. ALR Transformation",
+       x = "Metric", y = "Value") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  geom_text(aes(label = sprintf("%.3f", value)), 
+            position = position_dodge(width = 0.7), 
+            vjust = -0.3, size = 3)
+
+# Compare number of selected features
+feature_count_comparison <- data.frame(
+  Method = c("Raw Counts + LASSO", "ALR Transformation + LASSO"),
+  Number_of_Features = c(nrow(raw_counts_results$selected_features), 
+                         nrow(alr_results$selected_features))
+)
+
+
+print(feature_count_comparison)
+
+# Visualize feature count comparison
+ggplot(feature_count_comparison, aes(x = Method, y = Number_of_Features, fill = Method)) +
+  geom_bar(stat = "identity", width = 0.5) +
+  scale_fill_manual(values = c("steelblue", "firebrick")) +
+  labs(title = "Number of Selected Features by Method",
+       x = "", y = "Number of Features") +
+  theme_minimal() +
+  geom_text(aes(label = Number_of_Features), vjust = -0.3)
+
+# Compare ROC curves
+roc_raw <- roc(y_test, 
+               predict(raw_counts_results$model, X_test, type = "prob")[, "Tumor"])
+
+roc_alr <- roc(y_test_alr, 
+               predict(alr_results$model, X_test_alr, type = "prob")[, "Tumor"])
+
+plot(roc_raw, col = "blue", lwd = 2, 
+     main = "ROC Curve Comparison")
+lines(roc_alr, col = "red", lwd = 2)
+abline(a = 0, b = 1, lty = 2, col = "gray")
+legend("bottomright", 
+       legend = c(
+         paste("Raw Counts (AUC =", round(raw_counts_results$performance$auc, 3), ")"),
+         paste("ALR (AUC =", round(alr_results$performance$auc, 3), ")")
+       ),
+       col = c("blue", "red"), 
+       lwd = 2)
+
+# Look at overlap in selected features
+if (length(raw_counts_results$selected_features$Feature) > 0 && 
+    length(alr_results$selected_features$Feature) > 0) {
+  
+  alr_features <- gsub("ALR_", "", as.character(alr_results$selected_features$Feature))
+  raw_features <- as.character(raw_counts_results$selected_features$Feature)
+  
+  # Find common features
+  common_features <- intersect(raw_features, alr_features)
+  
+  cat("Number of common features selected by both methods:", 
+      length(common_features), "\n")
+  
+  if (length(common_features) > 0) {
+    cat("Common features:\n")
+    print(common_features)
+    
+    # Create Venn diagram
+    if (requireNamespace("VennDiagram", quietly = TRUE)) {
+      venn.plot <- VennDiagram::venn.diagram(
+        x = list(
+          "Raw Counts" = raw_features,
+          "ALR Transform" = alr_features
+        ),
+        filename = NULL,
+        fill = c("steelblue", "firebrick"),
+        alpha = 0.5,
+        main = "Overlap in Selected Features"
+      )
+      grid.newpage()
+      grid.draw(venn.plot)
+    } else {
+      cat("VennDiagram package not available.")
+    }
+  }
+}
+
+```
